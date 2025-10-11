@@ -49,11 +49,18 @@ require("lazy").setup({
   { "nvim-lua/plenary.nvim", lazy = true },
 
   -- Appearance
-  { "ellisonleao/gruvbox.nvim", priority = 1000, config = function()
-      vim.cmd.colorscheme("gruvbox")
-    end
+  { 
+    "folke/tokyonight.nvim",
+    lazy = false,
+    priority = 1000,
+    opts = {}, -- you can pass options here
+    config = function()
+      vim.cmd.colorscheme("tokyonight")
+    end,  
   },
+
   { "nvim-tree/nvim-web-devicons", lazy = true },
+
   { "nvim-lualine/lualine.nvim", config = function()
       require("lualine").setup({ options = { theme = "auto" } })
     end
