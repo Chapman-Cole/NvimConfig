@@ -29,6 +29,12 @@ o.virtualedit = "onemore"
 
 -- Small QoL keymaps
 local map = vim.keymap.set
+-- Make ctrl-z function like it does normally
+map("n", "<C-z>", "u", { desc = "Undo" })
+map("i", "<C-z>", "<C-o>u", { desc = "Undo (Insert mode)" })
+-- Allow backspace to delete selected text in Visual mode
+map("x", "<BS>", '"_d', { desc = "Delete selection with backspace" })
+
 map("n", "<leader>w", "<cmd>w<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit" })
 map("n", "<Esc>", "<cmd>nohlsearch<cr>")
@@ -191,6 +197,22 @@ require("lazy").setup({
     end,
   },
 
+  {
+    "ray-x/lsp_signature.nvim",
+    event = "VeryLazy",
+    config = function()
+      require("lsp_signature").setup({
+        bind = true,
+        hint_enable = true,        -- virtual hint inline
+        floating_window = true,    -- show popup window
+        handler_opts = { border = "rounded" },
+        hint_prefix = "🐍 ",       -- change the icon if you want
+        toggle_key = "<M-x>",      -- Alt-x to toggle display
+        zindex = 50,               -- ensure it’s above other floats
+      })
+    end,
+  },
+
   -- Completion (nvim-cmp) with LSP source + snippets
   { "hrsh7th/nvim-cmp",
     dependencies = {
@@ -317,4 +339,9 @@ vim.diagnostic.config({
     prefix = "",
   },
 })
+
+-- Manual clang-format binding
+vim.keymap.set("n", "<leader>cf", function()
+  vim.lsp.buf.format({ async = true })
+end, { desc = "Format file with clangd" })
 
