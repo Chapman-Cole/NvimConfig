@@ -9,7 +9,7 @@ vim.g.maplocalleader = " "
 
 local o = vim.opt
 o.number = true
-o.relativenumber = true
+o.relativenumber = false
 o.mouse = "a"
 o.clipboard = "unnamedplus"
 o.ignorecase = true
@@ -22,12 +22,69 @@ o.signcolumn = "yes"
 o.splitright = true
 o.splitbelow = true
 o.updatetime = 250
+o.wrap = false
+o.sidescroll = 1
+o.sidescrolloff = 8
+o.virtualedit = "onemore"
 
 -- Small QoL keymaps
 local map = vim.keymap.set
 map("n", "<leader>w", "<cmd>w<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit" })
 map("n", "<Esc>", "<cmd>nohlsearch<cr>")
+map("n", "<leader>e", function()
+  vim.diagnostic.open_float(nil, { focus = false, scope = "cursor" })
+end, { desc = "Line diagnostics" })
+
+-- Open a full-screen terminal that restores your previous buffer when closed
+vim.keymap.set("n", "<leader>t", function()
+  -- Save the current window view
+  local current_win = vim.api.nvim_get_current_win()
+  local current_buf = vim.api.nvim_get_current_buf()
+
+  -- Open a new full-screen terminal buffer
+  vim.cmd("terminal")
+
+  -- When the terminal buffer is closed, return to previous buffer
+  vim.api.nvim_create_autocmd("TermClose", {
+    once = true,
+    callback = function()
+      if vim.api.nvim_buf_is_valid(current_buf) and vim.api.nvim_win_is_valid(current_win) then
+        vim.api.nvim_set_current_win(current_win)
+        vim.api.nvim_set_current_buf(current_buf)
+      end
+    end,
+  })
+
+  -- Start in insert mode for immediate terminal input
+  vim.cmd("startinsert")
+end, { desc = "Open full-screen terminal" })
+
+-- Force Neovim to use wl-clipboard
+vim.g.clipboard = {
+  name = "wl-clipboard",
+  copy = {
+    ["+"] = { "wl-copy", "--foreground", "--type", "text/plain" },
+    ["*"] = { "wl-copy", "--foreground", "--primary", "--type", "text/plain" },
+  },
+  paste = {
+    ["+"] = { "wl-paste", "--no-newline" },
+    ["*"] = { "wl-paste", "--primary", "--no-newline" },
+  },
+  cache_enabled = 1,
+}
+
+-- Use Ctrl+C / Ctrl+V for copy/paste like VS Code
+-- (works in normal, visual, and insert modes)
+
+-- Copy to system clipboard
+vim.keymap.set({ "n", "x" }, "<C-c>", '"+y', { desc = "Copy to system clipboard" })
+
+-- Paste from system clipboard
+vim.keymap.set({ "n", "x" }, "<C-v>", '"+p', { desc = "Paste from system clipboard" })
+
+-- Paste in insert mode
+vim.keymap.set("i", "<C-v>", '<C-r>+', { desc = "Paste from system clipboard" })
 
 -- ---------- Bootstrap lazy.nvim ----------
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -55,7 +112,17 @@ require("lazy").setup({
     priority = 1000,
     opts = {}, -- you can pass options here
     config = function()
+      vim.g.tokyonight_transparent = true
+      vim.g.tokyonight_transparent_sidebar = true
       vim.cmd.colorscheme("tokyonight")
+
+      -- Extra safeguard: clear background of standard highlight groups
+      for _, group in ipairs({
+        "Normal", "NormalNC", "NormalFloat", "FloatBorder",
+        "SignColumn", "LineNr", "EndOfBuffer"
+      }) do
+        vim.api.nvim_set_hl(0, group, { bg = "none" })
+      end
     end,  
   },
 
@@ -70,9 +137,11 @@ require("lazy").setup({
   { "nvim-telescope/telescope.nvim", dependencies = { "nvim-lua/plenary.nvim" },
     config = function()
       local telescope = require("telescope")
+
       telescope.setup({})
+
       local map = vim.keymap.set
-      map("n", "<leader>ff", "<cmd>Telescope find_files<cr>", { desc = "Find files" })
+      map("n", "<leader>ff", "<cmd>Telescope find_files hidden=true no_ignore=true<cr>", { desc = "Find files" })
       map("n", "<leader>fg", "<cmd>Telescope live_grep<cr>", { desc = "Live grep" })
       map("n", "<leader>fb", "<cmd>Telescope buffers<cr>",    { desc = "Buffers" })
       map("n", "<leader>fh", "<cmd>Telescope help_tags<cr>",  { desc = "Help" })
@@ -101,6 +170,25 @@ require("lazy").setup({
         ensure_installed = { "lua_ls", "clangd" },
       })
     end
+  },
+
+  {
+    "windwp/nvim-autopairs",
+    event = "InsertEnter",
+    config = function()
+      local npairs = require("nvim-autopairs")
+      npairs.setup({
+        check_ts = true,  -- enables Treesitter-based rules for better context
+        fast_wrap = {},   -- optional: allows wrapping existing text
+      })
+
+      -- Optional: integrate with nvim-cmp completion
+      local ok, cmp = pcall(require, "cmp")
+      if ok then
+        local cmp_autopairs = require("nvim-autopairs.completion.cmp")
+        cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
+      end
+    end,
   },
 
   -- Completion (nvim-cmp) with LSP source + snippets
@@ -187,11 +275,10 @@ vim.lsp.config("lua_ls", {
 
 -- LSP config for clangd specifically
 vim.lsp.config("clangd", {
-  cmd = {"clangd", "--fallback-style={BasedOnStyle: LLVM, IndentWidth: 4}"},
-})
+  cmd = { "/usr/bin/clangd", "--enable-config", "--background-index", "--clang-tidy", "-header-insertion=iwyu" },
 
-vim.lsp.config("pyright", {})  -- defaults are fine
-vim.lsp.config("ts_ls", {})    -- TypeScript/JavaScript (typescript-language-server)
+  filetypes = { "c", "cpp", "objc", "objcpp", "cuda", "proto", "hpp", "ixx", "mpp" },
+})
 
 -- Enable servers
 for _, server in ipairs({ "lua_ls", "clangd" }) do
@@ -210,3 +297,24 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.bo.cindent = true
   end,
 })
+
+-- Adds a border to diagnostic windows to differentiate it from text
+vim.diagnostic.config({
+  virtual_text = {
+    prefix = "●",
+  },
+  signs = true,
+  underline = true,
+  update_in_insert = false,
+  severity_sort = true,
+
+  float = {
+    border = "rounded",   -- options: "single", "double", "rounded", "solid", "shadow"
+    focusable = false,
+    style = "minimal",
+    source = "always",    -- show "Error [pyright]" in popup
+    header = "",
+    prefix = "",
+  },
+})
+
