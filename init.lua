@@ -370,7 +370,9 @@ vim.diagnostic.config({
   },
 })
 
--- Manual clang-format binding
+-- <leader>cf in NORMAL mode -> whole buffer
 vim.keymap.set("n", "<leader>cf", function()
   vim.lsp.buf.format({ async = true })
-end, { desc = "Format file with clangd" })
+end, { desc = "Format buffer with LSP" })
+
+
