@@ -219,6 +219,32 @@ require("lazy").setup({
     end,
   },
 
+  -- Debugging core + UI + Mason installer
+  { "mfussenegger/nvim-dap" },
+
+  {
+    "rcarriga/nvim-dap-ui",
+    dependencies = {
+      "mfussenegger/nvim-dap",
+      "nvim-neotest/nvim-nio"
+    }
+  },
+
+  -- Multi line cursor functionality
+  { "mg979/vim-visual-multi", branch = "master" },
+
+  {
+    "jay-babu/mason-nvim-dap.nvim",
+    dependencies = { "williamboman/mason.nvim", "mfussenegger/nvim-dap" },
+    config = function()
+      require("mason-nvim-dap").setup({
+        ensure_installed = { "codelldb" }, -- adapter we’ll use
+        automatic_installation = true,
+      })
+    end
+  },
+
+
   -- Completion (nvim-cmp) with LSP source + snippets
   {
     "hrsh7th/nvim-cmp",
@@ -375,4 +401,69 @@ vim.keymap.set("n", "<leader>cf", function()
   vim.lsp.buf.format({ async = true })
 end, { desc = "Format buffer with LSP" })
 
+-- ===== DAP setup for C/C++ with codelldb =====
+local dap = require("dap")
+local dapui = require("dapui")
 
+dapui.setup({
+  layouts = {
+    { elements = { "scopes", "breakpoints", "stacks", "watches" }, size = 40, position = "left" },
+    { elements = { "repl", "console" },                            size = 10, position = "bottom" },
+  },
+})
+
+-- Auto-open/close UI on session start/end
+dap.listeners.after.event_initialized["dapui_config"] = function() dapui.open() end
+dap.listeners.before.event_terminated["dapui_config"] = function() dapui.close() end
+dap.listeners.before.event_exited["dapui_config"]     = function() dapui.close() end
+
+-- Find codelldb adapter installed by Mason
+local mason                                           = vim.fn.stdpath("data") .. "/mason"
+local codelldb_path                                   = mason .. "/bin/codelldb" -- shim
+local liblldb_path                                    = mason .. "/packages/codelldb/extension/lldb/lib/liblldb.so"
+if vim.fn.has("mac") == 1 then
+  liblldb_path = mason .. "/packages/codelldb/extension/lldb/lib/liblldb.dylib"
+end
+-- If the shim isn’t present, you can point directly to the adapter:
+-- local adapter_path = mason .. "/packages/codelldb/extension/adapter/codelldb"
+
+dap.adapters.codelldb = {
+  type = "server",
+  port = "${port}",
+  executable = {
+    command = codelldb_path,
+    -- If your shim fails, use:
+    -- command = adapter_path,
+    args = { "--port", "${port}" },
+  },
+}
+
+-- Default launch config for C/C++
+dap.configurations.c = {
+  {
+    name = "Launch (choose executable)",
+    type = "codelldb",
+    request = "launch",
+    program = function()
+      -- Pick an existing binary or type a path (e.g., ./build/app)
+      return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file")
+    end,
+    cwd = "${workspaceFolder}",
+    stopOnEntry = false,
+    args = {},            -- e.g., { "arg1", "arg2" }
+    runInTerminal = true, -- needed for programs that read stdin
+  },
+}
+dap.configurations.cpp = dap.configurations.c
+
+-- The key bindings for DAP (the debugger)
+map("n", "<F5>", function() require("dap").continue() end, { desc = "DAP Continue/Start" })
+map("n", "<F10>", function() require("dap").step_over() end, { desc = "DAP Step Over" })
+map("n", "<F11>", function() require("dap").step_into() end, { desc = "DAP Step Into" })
+map("n", "<F12>", function() require("dap").step_out() end, { desc = "DAP Step Out" })
+map("n", "<leader>db", function() require("dap").toggle_breakpoint() end, { desc = "DAP Toggle Breakpoint" })
+map("n", "<leader>dB", function()
+  require("dap").set_breakpoint(vim.fn.input("Breakpoint condition: "))
+end, { desc = "DAP Conditional Breakpoint" })
+map("n", "<leader>dr", function() require("dap").repl.open() end, { desc = "DAP REPL" })
+map("n", "<leader>du", function() require("dapui").toggle() end, { desc = "DAP UI Toggle" })
