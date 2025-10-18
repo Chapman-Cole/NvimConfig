@@ -148,10 +148,16 @@ require("lazy").setup({
     config = function()
       local telescope = require("telescope")
 
-      telescope.setup({})
+      telescope.setup({
+        defaults = {
+          file_ignore_patterns = {
+            "%.git/"
+          }
+        }
+      })
 
       local map = vim.keymap.set
-      map("n", "<leader>ff", "<cmd>Telescope find_files hidden=true no_ignore=true<cr>", { desc = "Find files" })
+      map("n", "<leader>ff", "<cmd>Telescope find_files hidden=true<cr>", { desc = "Find files" })
       map("n", "<leader>fg", "<cmd>Telescope live_grep<cr>", { desc = "Live grep" })
       map("n", "<leader>fb", "<cmd>Telescope buffers<cr>", { desc = "Buffers" })
       map("n", "<leader>fh", "<cmd>Telescope help_tags<cr>", { desc = "Help" })
