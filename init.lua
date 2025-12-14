@@ -39,31 +39,31 @@ map("n", "<leader>w", "<cmd>w<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit" })
 map("n", "<Esc>", "<cmd>nohlsearch<cr>")
 map("n", "<leader>e", function()
-  vim.diagnostic.open_float(nil, { focus = false, scope = "cursor" })
+vim.diagnostic.open_float(nil, { focus = false, scope = "cursor" })
 end, { desc = "Line diagnostics" })
 
 -- Open a full-screen terminal that restores your previous buffer when closed
 vim.keymap.set("n", "<leader>t", function()
-  -- Save the current window view
-  local current_win = vim.api.nvim_get_current_win()
-  local current_buf = vim.api.nvim_get_current_buf()
+-- Save the current window view
+local current_win = vim.api.nvim_get_current_win()
+local current_buf = vim.api.nvim_get_current_buf()
 
-  -- Open a new full-screen terminal buffer
-  vim.cmd("terminal")
+-- Open a new full-screen terminal buffer
+vim.cmd("terminal")
 
-  -- When the terminal buffer is closed, return to previous buffer
-  vim.api.nvim_create_autocmd("TermClose", {
-    once = true,
-    callback = function()
-      if vim.api.nvim_buf_is_valid(current_buf) and vim.api.nvim_win_is_valid(current_win) then
-        vim.api.nvim_set_current_win(current_win)
-        vim.api.nvim_set_current_buf(current_buf)
-      end
+-- When the terminal buffer is closed, return to previous buffer
+vim.api.nvim_create_autocmd("TermClose", {
+  once = true,
+  callback = function()
+  if vim.api.nvim_buf_is_valid(current_buf) and vim.api.nvim_win_is_valid(current_win) then
+    vim.api.nvim_set_current_win(current_win)
+    vim.api.nvim_set_current_buf(current_buf)
+    end
     end,
-  })
+})
 
-  -- Start in insert mode for immediate terminal input
-  vim.cmd("startinsert")
+-- Start in insert mode for immediate terminal input
+vim.cmd("startinsert")
 end, { desc = "Open full-screen terminal" })
 
 -- Force Neovim to use wl-clipboard
@@ -92,6 +92,24 @@ vim.keymap.set({ "n", "x" }, "<C-v>", '"+p', { desc = "Paste from system clipboa
 -- Paste in insert mode
 vim.keymap.set("i", "<C-v>", '<C-r>+', { desc = "Paste from system clipboard" })
 
+-- This makes it so that enter and backspace can be used when searching through a file
+map("n", "<CR>", function()
+if vim.v.hlsearch == 1 then
+  return "nzzzv"      -- next match
+  else
+    return "<CR>"       -- default: move cursor down
+    end
+    end, { expr = true, desc = "Next search match or newline" })
+
+map("n", "<BS>", function()
+if vim.v.hlsearch == 1 then
+  return "Nzzzv"      -- previous match
+  else
+    return "<BS>"       -- default behavior
+    end
+    end, { expr = true, desc = "Previous search match or backspace" })
+
+
 -- ---------- Bootstrap lazy.nvim ----------
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
@@ -103,21 +121,21 @@ if not vim.loop.fs_stat(lazypath) then
     "--branch=stable",
     lazypath,
   })
-end
-vim.opt.rtp:prepend(lazypath)
+  end
+  vim.opt.rtp:prepend(lazypath)
 
--- ---------- Plugins ----------
-require("lazy").setup({
-  -- Utility
-  { "nvim-lua/plenary.nvim",       lazy = true },
+  -- ---------- Plugins ----------
+  require("lazy").setup({
+    -- Utility
+    { "nvim-lua/plenary.nvim",       lazy = true },
 
-  -- Appearance
-  {
-    "folke/tokyonight.nvim",
-    lazy = false,
-    priority = 1000,
-    opts = {}, -- you can pass options here
-    config = function()
+    -- Appearance
+    {
+      "folke/tokyonight.nvim",
+      lazy = false,
+      priority = 1000,
+      opts = {}, -- you can pass options here
+      config = function()
       vim.g.tokyonight_transparent = true
       vim.g.tokyonight_transparent_sidebar = true
       vim.cmd.colorscheme("tokyonight")
@@ -127,31 +145,32 @@ require("lazy").setup({
         "Normal", "NormalNC", "NormalFloat", "FloatBorder",
         "SignColumn", "LineNr", "EndOfBuffer"
       }) do
-        vim.api.nvim_set_hl(0, group, { bg = "none" })
+      vim.api.nvim_set_hl(0, group, { bg = "none" })
       end
-    end,
-  },
+      end,
+    },
 
-  { "nvim-tree/nvim-web-devicons", lazy = true },
+    { "nvim-tree/nvim-web-devicons", lazy = true },
 
-  {
-    "nvim-lualine/lualine.nvim",
-    config = function()
+    {
+      "nvim-lualine/lualine.nvim",
+      config = function()
       require("lualine").setup({ options = { theme = "auto" } })
-    end
-  },
+      end
+    },
 
-  -- Finder
-  {
-    "nvim-telescope/telescope.nvim",
-    dependencies = { "nvim-lua/plenary.nvim" },
-    config = function()
+    -- Finder
+    {
+      "nvim-telescope/telescope.nvim",
+      dependencies = { "nvim-lua/plenary.nvim" },
+      config = function()
       local telescope = require("telescope")
 
       telescope.setup({
         defaults = {
           file_ignore_patterns = {
-            "%.git/"
+            "%.git/",
+            "./build"
           }
         }
       })
@@ -161,172 +180,180 @@ require("lazy").setup({
       map("n", "<leader>fg", "<cmd>Telescope live_grep<cr>", { desc = "Live grep" })
       map("n", "<leader>fb", "<cmd>Telescope buffers<cr>", { desc = "Buffers" })
       map("n", "<leader>fh", "<cmd>Telescope help_tags<cr>", { desc = "Help" })
-    end
-  },
+      end
+    },
 
-  -- Treesitter (better syntax/indent)
+    -- Treesitter (better syntax/indent)
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
     config = function()
-      require("nvim-treesitter.configs").setup({
-        ensure_installed = { "lua", "vim", "vimdoc", "bash", "python", "json", "c", "cpp", },
-        highlight = { enable = true },
-        indent = { enable = true },
-      })
+    require("nvim-treesitter.configs").setup({
+      ensure_installed = { "lua", "vim", "vimdoc", "bash", "python", "json", "c", "cpp", },
+      highlight = { enable = true },
+      indent = { enable = true },
+    })
     end
   },
 
   -- LSP infra (we'll use the new vim.lsp.config API below)
   { "neovim/nvim-lspconfig" }, -- still provides defaults/metadata
   { "williamboman/mason.nvim", config = function() require("mason").setup() end },
-  {
-    "williamboman/mason-lspconfig.nvim",
-    config = function()
-      require("mason-lspconfig").setup({
-        -- IMPORTANT: use lspconfig server names; TypeScript is "ts_ls"
-        ensure_installed = { "lua_ls", "clangd" },
-      })
-    end
-  },
+                        {
+                          "williamboman/mason-lspconfig.nvim",
+                          config = function()
+                          require("mason-lspconfig").setup({
+                            -- IMPORTANT: use lspconfig server names; TypeScript is "ts_ls"
+                            ensure_installed = { "lua_ls", "clangd" },
+                          })
+                          end
+                        },
 
-  {
-    "windwp/nvim-autopairs",
-    event = "InsertEnter",
-    config = function()
-      local npairs = require("nvim-autopairs")
-      npairs.setup({
-        check_ts = true, -- enables Treesitter-based rules for better context
-        fast_wrap = {},  -- optional: allows wrapping existing text
-      })
+                        {
+                          "windwp/nvim-autopairs",
+                          event = "InsertEnter",
+                          config = function()
+                          local npairs = require("nvim-autopairs")
+                          npairs.setup({
+                            check_ts = true, -- enables Treesitter-based rules for better context
+                            fast_wrap = {},  -- optional: allows wrapping existing text
+                          })
 
-      -- Optional: integrate with nvim-cmp completion
-      local ok, cmp = pcall(require, "cmp")
-      if ok then
-        local cmp_autopairs = require("nvim-autopairs.completion.cmp")
-        cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
-      end
-    end,
-  },
+                          -- Optional: integrate with nvim-cmp completion
+                          local ok, cmp = pcall(require, "cmp")
+                          if ok then
+                            local cmp_autopairs = require("nvim-autopairs.completion.cmp")
+                            cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
+                            end
+                            end,
+                        },
 
-  {
-    "ray-x/lsp_signature.nvim",
-    event = "VeryLazy",
-    config = function()
-      require("lsp_signature").setup({
-        bind = true,
-        hint_enable = true, -- virtual hint inline
-        floating_window = true, -- show popup window
-        handler_opts = { border = "rounded" },
-        hint_prefix = "🐍 ", -- change the icon if you want
-        toggle_key = "<M-x>", -- Alt-x to toggle display
-        zindex = 50, -- ensure it’s above other floats
-      })
-    end,
-  },
+                        {
+                          "ray-x/lsp_signature.nvim",
+                          event = "VeryLazy",
+                          config = function()
+                          require("lsp_signature").setup({
+                            bind = true,
+                            hint_enable = true, -- virtual hint inline
+                            floating_window = true, -- show popup window
+                            handler_opts = { border = "rounded" },
+                            hint_prefix = "🐍 ", -- change the icon if you want
+                            toggle_key = "<C-e>", -- Control-e to toggle display
+                            zindex = 50, -- ensure it’s above other floats
+                          })
+                          end,
+                        },
 
-  -- Debugging core + UI + Mason installer
-  { "mfussenegger/nvim-dap" },
+                        -- Debugging core + UI + Mason installer
+                        { "mfussenegger/nvim-dap" },
 
-  {
-    "rcarriga/nvim-dap-ui",
-    dependencies = {
-      "mfussenegger/nvim-dap",
-      "nvim-neotest/nvim-nio"
-    }
-  },
+                        {
+                          "rcarriga/nvim-dap-ui",
+                          dependencies = {
+                            "mfussenegger/nvim-dap",
+                            "nvim-neotest/nvim-nio"
+                          }
+                        },
 
-  -- Multi line cursor functionality
-  { "mg979/vim-visual-multi", branch = "master" },
+                        -- Multi line cursor functionality
+                        { "mg979/vim-visual-multi", branch = "master" },
 
-  {
-    "jay-babu/mason-nvim-dap.nvim",
-    dependencies = { "williamboman/mason.nvim", "mfussenegger/nvim-dap" },
-    config = function()
-      require("mason-nvim-dap").setup({
-        ensure_installed = { "codelldb" }, -- adapter we’ll use
-        automatic_installation = true,
-      })
-    end
-  },
+                        {
+                          "jay-babu/mason-nvim-dap.nvim",
+                          dependencies = { "williamboman/mason.nvim", "mfussenegger/nvim-dap" },
+                          config = function()
+                          require("mason-nvim-dap").setup({
+                            ensure_installed = { "codelldb" }, -- adapter we’ll use
+                            automatic_installation = true,
+                          })
+                          end
+                        },
 
 
-  -- Completion (nvim-cmp) with LSP source + snippets
-  {
-    "hrsh7th/nvim-cmp",
-    dependencies = {
-      "hrsh7th/cmp-nvim-lsp",
-      "hrsh7th/cmp-buffer",
-      "hrsh7th/cmp-path",
-      "L3MON4D3/LuaSnip",
-      "saadparwaiz1/cmp_luasnip",
-    },
-    config = function()
-      local cmp = require("cmp")
-      local luasnip = require("luasnip")
+                        -- Completion (nvim-cmp) with LSP source + snippets
+                        {
+                          "hrsh7th/nvim-cmp",
+                          dependencies = {
+                            "hrsh7th/cmp-nvim-lsp",
+                            "hrsh7th/cmp-buffer",
+                            "hrsh7th/cmp-path",
+                            "L3MON4D3/LuaSnip",
+                            "saadparwaiz1/cmp_luasnip",
+                          },
+                          config = function()
+                          local cmp = require("cmp")
+                          local luasnip = require("luasnip")
 
-      cmp.setup({
-        snippet = {
-          expand = function(args) luasnip.lsp_expand(args.body) end,
-        },
+                          cmp.setup({
+                            snippet = {
+                              expand = function(args) luasnip.lsp_expand(args.body) end,
+                            },
 
-        mapping = cmp.mapping.preset.insert({
-          ["<C-b>"] = cmp.mapping.scroll_docs(-4),
-          ["<C-f>"] = cmp.mapping.scroll_docs(4),
-          ["<C-Space>"] = cmp.mapping.complete(),
-          ["<C-e>"] = cmp.mapping.abort(), -- cancel
-          ["<CR>"] = cmp.mapping.confirm({ select = true }),
-          ["<Tab>"] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_next_item()
-            elseif luasnip.expand_or_jumpable() then
-              luasnip.expand_or_jump()
-            else
-              fallback()
-            end
-          end, { "i", "s" }),
-          ["<S-Tab>"] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_prev_item()
-            elseif luasnip.jumpable(-1) then
-              luasnip.jump(-1)
-            else
-              fallback()
-            end
-          end, { "i", "s" }),
-          ["<Esc>"] = cmp.mapping({
-            i = function(fallback)
-              if cmp.visible() then
-                cmp.abort()
-              else
-                fallback()
-              end
-            end,
-            c = function(fallback)
-              fallback()
-            end,
-          }),
-        }),
+                            mapping = cmp.mapping.preset.insert({
+                              ["<C-b>"] = cmp.mapping.scroll_docs(-4),
+                                                                ["<C-f>"] = cmp.mapping.scroll_docs(4),
+                                                                ["<C-Space>"] = cmp.mapping.complete(),
+                                                                ["<C-e>"] = cmp.mapping.abort(), -- cancel
+                                                                ["<CR>"] = cmp.mapping(function(fallback)
+                                                                if cmp.visible() and cmp.get_selected_entry() then
+                                                                  -- Only confirm if you actually selected something
+                                                                  cmp.confirm({ select = false })
+                                                                  else
+                                                                    -- Otherwise, just do a normal Enter
+                                                                    fallback()
+                                                                    end
+                                                                    end, { "i", "s" }),
+                                                                    ["<Tab>"] = cmp.mapping(function(fallback)
+                                                                    if cmp.visible() then
+                                                                      cmp.select_next_item()
+                                                                      elseif luasnip.expand_or_jumpable() then
+                                                                        luasnip.expand_or_jump()
+                                                                        else
+                                                                          fallback()
+                                                                          end
+                                                                          end, { "i", "s" }),
+                                                                          ["<S-Tab>"] = cmp.mapping(function(fallback)
+                                                                          if cmp.visible() then
+                                                                            cmp.select_prev_item()
+                                                                            elseif luasnip.jumpable(-1) then
+                                                                              luasnip.jump(-1)
+                                                                              else
+                                                                                fallback()
+                                                                                end
+                                                                                end, { "i", "s" }),
+                                                                                ["<Esc>"] = cmp.mapping({
+                                                                                  i = function(fallback)
+                                                                                  if cmp.visible() then
+                                                                                    cmp.abort()
+                                                                                    else
+                                                                                      fallback()
+                                                                                      end
+                                                                                      end,
+                                                                                      c = function(fallback)
+                                                                                      fallback()
+                                                                                      end,
+                                                                                }),
+                            }),
 
-        sources = {
-          { name = "nvim_lsp" },
-          { name = "luasnip" },
-          { name = "path" },
-          { name = "buffer" },
-        },
-      })
-    end
-  },
-}, {
-  ui = { border = "rounded" },
-})
+                            sources = {
+                              { name = "nvim_lsp" },
+                              { name = "luasnip" },
+                              { name = "path" },
+                              { name = "buffer" },
+                            },
+                          })
+                          end
+                        },
+  }, {
+    ui = { border = "rounded" },
+  })
 
--- ---------- New LSP API (Neovim 0.11+) ----------
--- Global/base config for all LSPs
-vim.lsp.config('*', {
-  on_attach = function(_, bufnr)
+  -- ---------- New LSP API (Neovim 0.11+) ----------
+  -- Global/base config for all LSPs
+  vim.lsp.config('*', {
+    on_attach = function(_, bufnr)
     local mapb = function(mode, lhs, rhs, desc)
-      vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+    vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
     end
     mapb("n", "gd", vim.lsp.buf.definition, "Go to definition")
     mapb("n", "gr", vim.lsp.buf.references, "References")
@@ -337,139 +364,145 @@ vim.lsp.config('*', {
     mapb("n", "[d", vim.diagnostic.goto_prev, "Prev diagnostic")
     mapb("n", "]d", vim.diagnostic.goto_next, "Next diagnostic")
     vim.api.nvim_buf_set_option(bufnr, "omnifunc", "v:lua.vim.lsp.omnifunc")
-  end,
+    end,
 
-  capabilities = (function()
+    capabilities = (function()
     local caps = vim.lsp.protocol.make_client_capabilities()
     local ok, cmp_lsp = pcall(require, "cmp_nvim_lsp")
     if ok then caps = cmp_lsp.default_capabilities(caps) end
-    return caps
-  end)(),
-})
+      -- This will prevent function signatures from automatically being placed when completing function
+      caps.textDocument = caps.textDocument or {}
+      caps.textDocument.completion = caps.textDocument.completion or {}
+      caps.textDocument.completion.completionItem = caps.textDocument.completion.completionItem or {}
 
--- Server-specific tweaks/overrides (merged with the global '*')
-vim.lsp.config("lua_ls", {
-  settings = {
-    Lua = {
-      diagnostics = { globals = { "vim" } },
-      workspace = { checkThirdParty = false },
+      caps.textDocument.completion.completionItem.snippetSupport = false
+      return caps
+      end)(),
+  })
+
+  -- Server-specific tweaks/overrides (merged with the global '*')
+  vim.lsp.config("lua_ls", {
+    settings = {
+      Lua = {
+        diagnostics = { globals = { "vim" } },
+        workspace = { checkThirdParty = false },
+      }
     }
-  }
-})
+  })
 
--- LSP config for clangd specifically
-vim.lsp.config("clangd", {
-  cmd = { "/usr/bin/clangd", "--enable-config", "--background-index", "--clang-tidy", "-header-insertion=iwyu" },
+  -- LSP config for clangd specifically
+  vim.lsp.config("clangd", {
+    cmd = { "/usr/bin/clangd", "--enable-config", "--background-index", "--clang-tidy", "-header-insertion=iwyu" },
 
-  filetypes = { "c", "cpp", "objc", "objcpp", "cuda", "proto", "hpp", "ixx", "mpp" },
-})
+    filetypes = { "c", "cpp", "objc", "objcpp", "cuda", "proto", "hpp", "ixx", "mpp" },
+  })
 
--- Enable servers
-for _, server in ipairs({ "lua_ls", "clangd" }) do
-  vim.lsp.enable(server)
-end
+  -- Enable servers
+  for _, server in ipairs({ "lua_ls", "clangd" }) do
+    vim.lsp.enable(server)
+    end
 
--- 4-space indent for c/c++ buffers
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "c", "cpp", "objc", "objcpp" },
-  callback = function()
-    vim.bo.shiftwidth = 4
-    vim.bo.tabstop = 4
-    vim.bo.softtabstop = 4
-    vim.bo.expandtab = true
-    -- optional C indentation helpers:
-    vim.bo.cindent = true
-  end,
-})
+    -- 4-space indent for c/c++ buffers
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = { "c", "cpp", "objc", "objcpp" },
+      callback = function()
+      vim.bo.shiftwidth = 4
+      vim.bo.tabstop = 4
+      vim.bo.softtabstop = 4
+      vim.bo.expandtab = true
+      -- optional C indentation helpers:
+      vim.bo.cindent = true
+      end,
+    })
 
--- Adds a border to diagnostic windows to differentiate it from text
-vim.diagnostic.config({
-  virtual_text = {
-    prefix = "●",
-  },
-  signs = true,
-  underline = true,
-  update_in_insert = false,
-  severity_sort = true,
+    -- Adds a border to diagnostic windows to differentiate it from text
+    vim.diagnostic.config({
+      virtual_text = {
+        prefix = "●",
+      },
+      signs = true,
+      underline = true,
+      update_in_insert = false,
+      severity_sort = true,
 
-  float = {
-    border = "rounded", -- options: "single", "double", "rounded", "solid", "shadow"
-    focusable = false,
-    style = "minimal",
-    source = "always", -- show "Error [pyright]" in popup
-    header = "",
-    prefix = "",
-  },
-})
+      float = {
+        border = "rounded", -- options: "single", "double", "rounded", "solid", "shadow"
+        focusable = false,
+        style = "minimal",
+        source = "always", -- show "Error [pyright]" in popup
+        header = "",
+        prefix = "",
+      },
+    })
 
--- <leader>cf in NORMAL mode -> whole buffer
-vim.keymap.set("n", "<leader>cf", function()
-  vim.lsp.buf.format({ async = true })
-end, { desc = "Format buffer with LSP" })
+    -- <leader>cf in NORMAL mode -> whole buffer
+    vim.keymap.set("n", "<leader>cf", function()
+    vim.lsp.buf.format({ async = true })
+    end, { desc = "Format buffer with LSP" })
 
--- ===== DAP setup for C/C++ with codelldb =====
-local dap = require("dap")
-local dapui = require("dapui")
+    -- ===== DAP setup for C/C++ with codelldb =====
+    local dap = require("dap")
+    local dapui = require("dapui")
 
-dapui.setup({
-  layouts = {
-    { elements = { "scopes", "breakpoints", "stacks", "watches" }, size = 40, position = "left" },
-    { elements = { "repl", "console" },                            size = 10, position = "bottom" },
-  },
-})
+    dapui.setup({
+      layouts = {
+        { elements = { "scopes", "breakpoints", "stacks", "watches" }, size = 40, position = "left" },
+        { elements = { "repl", "console" },                            size = 10, position = "bottom" },
+      },
+    })
 
--- Auto-open/close UI on session start/end
-dap.listeners.after.event_initialized["dapui_config"] = function() dapui.open() end
-dap.listeners.before.event_terminated["dapui_config"] = function() dapui.close() end
-dap.listeners.before.event_exited["dapui_config"]     = function() dapui.close() end
+    -- Auto-open/close UI on session start/end
+    dap.listeners.after.event_initialized["dapui_config"] = function() dapui.open() end
+    dap.listeners.before.event_terminated["dapui_config"] = function() dapui.close() end
+    dap.listeners.before.event_exited["dapui_config"]     = function() dapui.close() end
 
--- Find codelldb adapter installed by Mason
-local mason                                           = vim.fn.stdpath("data") .. "/mason"
-local codelldb_path                                   = mason .. "/bin/codelldb" -- shim
-local liblldb_path                                    = mason .. "/packages/codelldb/extension/lldb/lib/liblldb.so"
-if vim.fn.has("mac") == 1 then
-  liblldb_path = mason .. "/packages/codelldb/extension/lldb/lib/liblldb.dylib"
-end
--- If the shim isn’t present, you can point directly to the adapter:
--- local adapter_path = mason .. "/packages/codelldb/extension/adapter/codelldb"
+    -- Find codelldb adapter installed by Mason
+    local mason                                           = vim.fn.stdpath("data") .. "/mason"
+    local codelldb_path                                   = mason .. "/bin/codelldb" -- shim
+    local liblldb_path                                    = mason .. "/packages/codelldb/extension/lldb/lib/liblldb.so"
+    if vim.fn.has("mac") == 1 then
+      liblldb_path = mason .. "/packages/codelldb/extension/lldb/lib/liblldb.dylib"
+      end
+      -- If the shim isn’t present, you can point directly to the adapter:
+      -- local adapter_path = mason .. "/packages/codelldb/extension/adapter/codelldb"
 
-dap.adapters.codelldb = {
-  type = "server",
-  port = "${port}",
-  executable = {
-    command = codelldb_path,
-    -- If your shim fails, use:
-    -- command = adapter_path,
-    args = { "--port", "${port}" },
-  },
-}
+      dap.adapters.codelldb = {
+        type = "server",
+        port = "${port}",
+        executable = {
+          command = codelldb_path,
+          -- If your shim fails, use:
+          -- command = adapter_path,
+          args = { "--port", "${port}" },
+        },
+      }
 
--- Default launch config for C/C++
-dap.configurations.c = {
-  {
-    name = "Launch (choose executable)",
-    type = "codelldb",
-    request = "launch",
-    program = function()
-      -- Pick an existing binary or type a path (e.g., ./build/app)
-      return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file")
-    end,
-    cwd = "${workspaceFolder}",
-    stopOnEntry = false,
-    args = {},            -- e.g., { "arg1", "arg2" }
-    runInTerminal = true, -- needed for programs that read stdin
-  },
-}
-dap.configurations.cpp = dap.configurations.c
+      -- Default launch config for C/C++
+      dap.configurations.c = {
+        {
+          name = "Launch (choose executable)",
+          type = "codelldb",
+          request = "launch",
+          program = function()
+          -- Pick an existing binary or type a path (e.g., ./build/app)
+          return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file")
+          end,
+          cwd = "${workspaceFolder}",
+          stopOnEntry = false,
+          args = {},            -- e.g., { "arg1", "arg2" }
+          runInTerminal = true, -- needed for programs that read stdin
+        },
+      }
+      dap.configurations.cpp = dap.configurations.c
 
--- The key bindings for DAP (the debugger)
-map("n", "<F5>", function() require("dap").continue() end, { desc = "DAP Continue/Start" })
-map("n", "<F10>", function() require("dap").step_over() end, { desc = "DAP Step Over" })
-map("n", "<F11>", function() require("dap").step_into() end, { desc = "DAP Step Into" })
-map("n", "<F12>", function() require("dap").step_out() end, { desc = "DAP Step Out" })
-map("n", "<leader>db", function() require("dap").toggle_breakpoint() end, { desc = "DAP Toggle Breakpoint" })
-map("n", "<leader>dB", function()
-  require("dap").set_breakpoint(vim.fn.input("Breakpoint condition: "))
-end, { desc = "DAP Conditional Breakpoint" })
-map("n", "<leader>dr", function() require("dap").repl.open() end, { desc = "DAP REPL" })
-map("n", "<leader>du", function() require("dapui").toggle() end, { desc = "DAP UI Toggle" })
+      -- The key bindings for DAP (the debugger)
+      map("n", "<F5>", function() require("dap").continue() end, { desc = "DAP Continue/Start" })
+      map("n", "<F10>", function() require("dap").step_over() end, { desc = "DAP Step Over" })
+      map("n", "<F11>", function() require("dap").step_into() end, { desc = "DAP Step Into" })
+      map("n", "<F12>", function() require("dap").step_out() end, { desc = "DAP Step Out" })
+      map("n", "<leader>db", function() require("dap").toggle_breakpoint() end, { desc = "DAP Toggle Breakpoint" })
+      map("n", "<leader>dB", function()
+      require("dap").set_breakpoint(vim.fn.input("Breakpoint condition: "))
+      end, { desc = "DAP Conditional Breakpoint" })
+      map("n", "<leader>dr", function() require("dap").repl.open() end, { desc = "DAP REPL" })
+      map("n", "<leader>du", function() require("dapui").toggle() end, { desc = "DAP UI Toggle" })
